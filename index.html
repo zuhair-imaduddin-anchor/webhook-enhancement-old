@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototype 1: Current State</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 30px; background-color: #f4f5f7; color: #333; }
+        h1 { text-align: center; color: #dc3545; }
+        .grid { display: flex; gap: 20px; margin-top: 20px; }
+        .column { flex: 1; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .client-side { background-color: #ffffff; border-top: 5px solid #007bff; }
+        .backend-side { background-color: #343a40; color: #f8f9fa; border-top: 5px solid #6c757d; }
+        .step { margin-bottom: 20px; padding: 15px; border-radius: 6px; position: relative; }
+        .client-side .step { background-color: #f8f9fa; border-left: 4px solid #007bff; }
+        .backend-side .step { background-color: #495057; border-left: 4px solid #adb5bd; }
+        .arrow { text-align: center; font-weight: bold; margin: 20px 0; color: #6c757d; }
+        .metrics { margin-top: 30px; padding: 20px; border-radius: 8px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .metrics h2 { margin-top: 0; }
+        .highlight { font-weight: bold; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+
+    <h1>Current State: Transfer Workflow</h1>
+    <p style="text-align: center;">Without Transfer ID in the webhook payload, forcing manual reconciliation.</p>
+
+    <div class="grid">
+        <div class="column client-side">
+            <h2>Client Application</h2>
+            <div class="step">
+                <strong>1. Receive Webhook:</strong> <code>transfer.initiated</code><br>
+                <em>Action:</em> Parse payload. Only <code>transactionId</code> is found.
+            </div>
+            <div class="step">
+                <strong>2. API Call 1:</strong> <code>GET /v2/transactions/{transactionId}</code><br>
+                <em>Action:</em> Fetch transaction to get the <code>blockchainTxId</code>.
+            </div>
+            <div class="step">
+                <strong>3. API Call 2:</strong> <code>GET /v2/transfers</code><br>
+                <em>Action:</em> Fetch all transfers. Iterate through the massive array to match <code>blockchainTxId</code> and find the <code>transferId</code>.
+            </div>
+            <div class="step">
+                <strong>4. Receive Webhook 2:</strong> <code>transfer.completed</code><br>
+                <em>Action:</em> Parse payload. Again, only <code>transactionId</code> is found.
+            </div>
+            <div class="step">
+                <strong>5. API Calls 3 & 4:</strong> Repeat Steps 2 & 3.<br>
+                <em>Action:</em> Verify final status of the specific transfer.
+            </div>
+        </div>
+
+        <div class="column backend-side">
+            <h2>Backend API</h2>
+            <div class="step">
+                <strong>1. Fire Webhook:</strong><br>
+                <em>Action:</em> Send payload containing <code>transactionId</code>.
+            </div>
+            <div class="step">
+                <strong>2. Process Request:</strong><br>
+                <em>Action:</em> Lookup transaction and return <code>blockchainTxId</code>.
+            </div>
+            <div class="step">
+                <strong>3. Process Heavy Request:</strong><br>
+                <em>Action:</em> Query DB for ALL transfers for this client. High compute/memory overhead.
+            </div>
+            <div class="step">
+                <strong>4. Fire Webhook:</strong><br>
+                <em>Action:</em> Send payload containing <code>transactionId</code>.
+            </div>
+            <div class="step">
+                <strong>5. Process Heavy Requests:</strong><br>
+                <em>Action:</em> Serve another targeted GET and another heavy GET ALL list.
+            </div>
+        </div>
+    </div>
+
+    <div class="metrics">
+        <h2>Impact Metrics (Per 1,000 Transfers)</h2>
+        <ul>
+            <li><strong>Total API Requests:</strong> <span class="highlight">4,000 requests</span> just to track state (4 calls per transfer).</li>
+            <li><strong>Rate Limiting Impact:</strong> <span class="highlight">SEVERE.</span> 2,000 of these are heavy list queries. Clients will rapidly hit rate limits, and backend database latency increases.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
