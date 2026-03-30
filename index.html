@@ -3,84 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Current State: App Locked Up</title>
+    <title>Current State: Sequential Ops</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 30px; background-color: #f4f5f7; color: #333; }
         h1 { text-align: center; color: #dc3545; }
         .grid { display: flex; gap: 30px; margin-top: 20px; }
         
-        /* App UI (Left Side) */
+        /* App UI */
         .app-container { flex: 1; display: flex; justify-content: center; }
-        .mobile-app { width: 320px; background: white; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); border: 8px solid #333; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .app-header { font-size: 1.2em; font-weight: bold; margin-bottom: 20px; color: #555; }
+        .mobile-app { width: 320px; height: 500px; background: white; border-radius: 30px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); border: 12px solid #222; padding: 30px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; }
         .amount { font-size: 2em; font-weight: bold; margin: 20px 0; }
+        .btn { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 1.1em; cursor: pointer; width: 100%; margin-top: 20px; font-weight: bold; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
         
-        /* Spinner */
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #dc3545; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .status-text { color: #666; font-size: 0.9em; margin-bottom: 20px; }
-        .locked-warning { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-size: 0.85em; margin-top: auto; border: 1px solid #ffeeba; }
+        
+        .status-text { color: #666; font-size: 0.9em; margin-bottom: 20px; min-height: 40px; }
+        .locked-warning { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-size: 0.85em; margin-top: auto; border: 1px solid #ffeeba; display: none; }
 
-        /* API Flow (Right Side) */
-        .api-flow { flex: 1.5; background: #282c34; color: #abb2bf; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .api-step { margin-bottom: 15px; padding: 12px; background: #3e4451; border-radius: 6px; border-left: 4px solid #e06c75; }
-        .api-step code { color: #98c379; font-size: 1.1em; }
+        /* API Flow */
+        .api-flow { flex: 1.5; background: #282c34; color: #abb2bf; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 10px; }
+        .api-step { padding: 12px; background: #3e4451; border-radius: 6px; border-left: 4px solid #5c6370; opacity: 0.4; transition: all 0.3s ease; }
+        .api-step.active { opacity: 1; border-left-color: #e06c75; background: #4b5263; transform: translateX(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .api-step.done { opacity: 0.8; border-left-color: #98c379; }
+        .api-step code { color: #98c379; font-size: 1.05em; display: block; margin-top: 5px; background: #222; padding: 4px; border-radius: 4px;}
         .api-step .note { display: block; margin-top: 5px; font-size: 0.85em; color: #e5c07b; }
         
-        /* Metrics */
-        .metrics { margin-top: 30px; padding: 20px; border-radius: 8px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
     </style>
 </head>
 <body>
 
-    <h1>Current State: The "Locked Up" Experience</h1>
+    <h1>Current State: The "Locked Up" Sequence</h1>
     
     <div class="grid">
         <div class="app-container">
             <div class="mobile-app">
-                <div class="app-header">Client App UI</div>
-                <div>Sending BTC to Vault</div>
+                <div style="font-weight: bold; color: #555;">Client Interface</div>
                 <div class="amount">15.50 BTC</div>
-                <div class="spinner"></div>
-                <div class="status-text">Processing Transfer...<br>Please do not close this window.</div>
+                <div style="color: #888;">To: Anchorage Vault</div>
                 
-                <div class="locked-warning">
-                    <strong>⚠️ UI Locked:</strong> The app is waiting for the backend to resolve the transfer status by matching IDs across multiple endpoints.
+                <button class="btn" id="startBtn" onclick="runSimulation()">Initiate Transfer</button>
+                
+                <div class="spinner" id="spinner"></div>
+                <div class="status-text" id="statusText"></div>
+                
+                <div class="locked-warning" id="warning">
+                    <strong>⚠️ UI Locked:</strong> Waiting on 4 separate API calls to resolve missing transferId.
                 </div>
             </div>
         </div>
 
-        <div class="api-flow">
-            <h2 style="color: white; margin-top: 0;">Backend API Operations</h2>
-            
-            <div class="api-step">
-                <strong>1. Webhook Received:</strong> <code>transfer.initiated</code>
-                <span class="note">Payload only has {transactionId}. Cannot update app UI yet.</span>
-            </div>
-            <div class="api-step">
-                <strong>2. Client Request:</strong> <code>GET /v2/transactions/{transactionId}</code>
-                <span class="note">Fetching blockchainTxId to use as a matching key.</span>
-            </div>
-            <div class="api-step" style="border-left-color: #e5c07b;">
-                <strong>3. Client Request (Heavy):</strong> <code>GET /v2/transfers</code>
-                <span class="note">Polling all transfers. Iterating to match blockchainTxId. Finally finds {transferId}.</span>
-            </div>
-            <div class="api-step">
-                <strong>4. Webhook Received:</strong> <code>transfer.completed</code>
-                <span class="note">Payload only has {transactionId}. App UI still locked.</span>
-            </div>
-            <div class="api-step" style="border-left-color: #e5c07b;">
-                <strong>5. Client Requests (Heavy):</strong> Repeat Steps 2 & 3
-                <span class="note">Must pull lists again to confirm the specific transfer completed. UI finally unlocks.</span>
-            </div>
+        <div class="api-flow" id="flowBox">
+            <h2 style="color: white; margin-top: 0; margin-bottom: 10px;">Backend Operations (Sequential)</h2>
+            <div class="api-step" id="step1"><strong>1. Webhook Received:</strong> <code>transfer.initiated<br>{"transactionId": "tx-123"}</code><span class="note">Missing transferId. Cannot resolve in App.</span></div>
+            <div class="api-step" id="step2"><strong>2. API Call 1:</strong> <code>GET /v2/transactions/tx-123</code><span class="note">Fetching blockchainTxId to use as a manual matching key.</span></div>
+            <div class="api-step" id="step3"><strong>3. API Call 2 (HEAVY):</strong> <code>GET /v2/transfers</code><span class="note">Polling ALL transfers. Iterating array to match blockchainTxId... Found transferId!</span></div>
+            <div class="api-step" id="step4"><strong>4. Internal Match:</strong> <code>App links tx-123 to transfer-999</code><span class="note">Initiation logic finally resolved.</span></div>
+            <div class="api-step" id="step5"><strong>5. Webhook Received:</strong> <code>transfer.completed<br>{"transactionId": "tx-123"}</code><span class="note">Still missing transferId. App stays locked.</span></div>
+            <div class="api-step" id="step6"><strong>6. API Call 3:</strong> <code>GET /v2/transactions/tx-123</code><span class="note">Repeating the lookup...</span></div>
+            <div class="api-step" id="step7"><strong>7. API Call 4 (HEAVY):</strong> <code>GET /v2/transfers</code><span class="note">Polling ALL transfers AGAIN to confirm status of transfer-999.</span></div>
+            <div class="api-step" id="step8"><strong>8. Final Resolution:</strong> <code>Status = Complete</code><span class="note">UX Finally unlocks. Massive rate limit consumption.</span></div>
         </div>
     </div>
 
-    <div class="metrics">
-        <h2>Infrastructure Impact (Per 1,000 Transfers)</h2>
-        <strong>API Requests:</strong> 4,000 requests (2,000 are heavy list queries).<br>
-        <strong>Rate Limiting:</strong> High risk of throttling due to repetitive GET /v2/transfers polling. App UX suffers from latency.
-    </div>
-
+    <script>
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        
+        async function runSimulation() {
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('spinner').style.display = 'block';
+            document.getElementById('warning').style.display = 'block';
+            const status = document.getElementById('statusText');
+            
+            status.innerHTML = "<strong>Processing...</strong><br>Waiting for backend correlation.";
+            
+            for(let i=1; i<=8; i++) {
+                const step = document.getElementById(`step${i}`);
+                if(i > 1) document.getElementById(`step${i-1}`).className = "api-step done";
+                
+                step.className = "api-step active";
+                
+                // Simulate delay (heavier queries take longer)
+                let delay = (i === 3 || i === 7) ? 2500 : 1200; 
+                await sleep(delay);
+            }
+            
+            document.getElementById('step8').className = "api-step done";
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('warning').style.display = 'none';
+            status.innerHTML = "<span style='color: #28a745; font-size: 1.5em; font-weight: bold;'>✓ Success</span><br>Transfer finally resolved.";
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('startBtn').innerText = 'Reset Simulation';
+            document.getElementById('startBtn').onclick = () => location.reload();
+        }
+    </script>
 </body>
 </html>
