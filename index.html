@@ -3,84 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prototype 1: Current State</title>
+    <title>Current State: App Locked Up</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 30px; background-color: #f4f5f7; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 30px; background-color: #f4f5f7; color: #333; }
         h1 { text-align: center; color: #dc3545; }
-        .grid { display: flex; gap: 20px; margin-top: 20px; }
-        .column { flex: 1; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .client-side { background-color: #ffffff; border-top: 5px solid #007bff; }
-        .backend-side { background-color: #343a40; color: #f8f9fa; border-top: 5px solid #6c757d; }
-        .step { margin-bottom: 20px; padding: 15px; border-radius: 6px; position: relative; }
-        .client-side .step { background-color: #f8f9fa; border-left: 4px solid #007bff; }
-        .backend-side .step { background-color: #495057; border-left: 4px solid #adb5bd; }
-        .arrow { text-align: center; font-weight: bold; margin: 20px 0; color: #6c757d; }
+        .grid { display: flex; gap: 30px; margin-top: 20px; }
+        
+        /* App UI (Left Side) */
+        .app-container { flex: 1; display: flex; justify-content: center; }
+        .mobile-app { width: 320px; background: white; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); border: 8px solid #333; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .app-header { font-size: 1.2em; font-weight: bold; margin-bottom: 20px; color: #555; }
+        .amount { font-size: 2em; font-weight: bold; margin: 20px 0; }
+        
+        /* Spinner */
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .status-text { color: #666; font-size: 0.9em; margin-bottom: 20px; }
+        .locked-warning { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-size: 0.85em; margin-top: auto; border: 1px solid #ffeeba; }
+
+        /* API Flow (Right Side) */
+        .api-flow { flex: 1.5; background: #282c34; color: #abb2bf; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .api-step { margin-bottom: 15px; padding: 12px; background: #3e4451; border-radius: 6px; border-left: 4px solid #e06c75; }
+        .api-step code { color: #98c379; font-size: 1.1em; }
+        .api-step .note { display: block; margin-top: 5px; font-size: 0.85em; color: #e5c07b; }
+        
+        /* Metrics */
         .metrics { margin-top: 30px; padding: 20px; border-radius: 8px; background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-        .metrics h2 { margin-top: 0; }
-        .highlight { font-weight: bold; font-size: 1.2em; }
     </style>
 </head>
 <body>
 
-    <h1>Current State: Transfer Workflow</h1>
-    <p style="text-align: center;">Without Transfer ID in the webhook payload, forcing manual reconciliation.</p>
-
+    <h1>Current State: The "Locked Up" Experience</h1>
+    
     <div class="grid">
-        <div class="column client-side">
-            <h2>Client Application</h2>
-            <div class="step">
-                <strong>1. Receive Webhook:</strong> <code>transfer.initiated</code><br>
-                <em>Action:</em> Parse payload. Only <code>transactionId</code> is found.
-            </div>
-            <div class="step">
-                <strong>2. API Call 1:</strong> <code>GET /v2/transactions/{transactionId}</code><br>
-                <em>Action:</em> Fetch transaction to get the <code>blockchainTxId</code>.
-            </div>
-            <div class="step">
-                <strong>3. API Call 2:</strong> <code>GET /v2/transfers</code><br>
-                <em>Action:</em> Fetch all transfers. Iterate through the massive array to match <code>blockchainTxId</code> and find the <code>transferId</code>.
-            </div>
-            <div class="step">
-                <strong>4. Receive Webhook 2:</strong> <code>transfer.completed</code><br>
-                <em>Action:</em> Parse payload. Again, only <code>transactionId</code> is found.
-            </div>
-            <div class="step">
-                <strong>5. API Calls 3 & 4:</strong> Repeat Steps 2 & 3.<br>
-                <em>Action:</em> Verify final status of the specific transfer.
+        <div class="app-container">
+            <div class="mobile-app">
+                <div class="app-header">Client App UI</div>
+                <div>Sending BTC to Vault</div>
+                <div class="amount">15.50 BTC</div>
+                <div class="spinner"></div>
+                <div class="status-text">Processing Transfer...<br>Please do not close this window.</div>
+                
+                <div class="locked-warning">
+                    <strong>⚠️ UI Locked:</strong> The app is waiting for the backend to resolve the transfer status by matching IDs across multiple endpoints.
+                </div>
             </div>
         </div>
 
-        <div class="column backend-side">
-            <h2>Backend API</h2>
-            <div class="step">
-                <strong>1. Fire Webhook:</strong><br>
-                <em>Action:</em> Send payload containing <code>transactionId</code>.
+        <div class="api-flow">
+            <h2 style="color: white; margin-top: 0;">Backend API Operations</h2>
+            
+            <div class="api-step">
+                <strong>1. Webhook Received:</strong> <code>transfer.initiated</code>
+                <span class="note">Payload only has {transactionId}. Cannot update app UI yet.</span>
             </div>
-            <div class="step">
-                <strong>2. Process Request:</strong><br>
-                <em>Action:</em> Lookup transaction and return <code>blockchainTxId</code>.
+            <div class="api-step">
+                <strong>2. Client Request:</strong> <code>GET /v2/transactions/{transactionId}</code>
+                <span class="note">Fetching blockchainTxId to use as a matching key.</span>
             </div>
-            <div class="step">
-                <strong>3. Process Heavy Request:</strong><br>
-                <em>Action:</em> Query DB for ALL transfers for this client. High compute/memory overhead.
+            <div class="api-step" style="border-left-color: #e5c07b;">
+                <strong>3. Client Request (Heavy):</strong> <code>GET /v2/transfers</code>
+                <span class="note">Polling all transfers. Iterating to match blockchainTxId. Finally finds {transferId}.</span>
             </div>
-            <div class="step">
-                <strong>4. Fire Webhook:</strong><br>
-                <em>Action:</em> Send payload containing <code>transactionId</code>.
+            <div class="api-step">
+                <strong>4. Webhook Received:</strong> <code>transfer.completed</code>
+                <span class="note">Payload only has {transactionId}. App UI still locked.</span>
             </div>
-            <div class="step">
-                <strong>5. Process Heavy Requests:</strong><br>
-                <em>Action:</em> Serve another targeted GET and another heavy GET ALL list.
+            <div class="api-step" style="border-left-color: #e5c07b;">
+                <strong>5. Client Requests (Heavy):</strong> Repeat Steps 2 & 3
+                <span class="note">Must pull lists again to confirm the specific transfer completed. UI finally unlocks.</span>
             </div>
         </div>
     </div>
 
     <div class="metrics">
-        <h2>Impact Metrics (Per 1,000 Transfers)</h2>
-        <ul>
-            <li><strong>Total API Requests:</strong> <span class="highlight">4,000 requests</span> just to track state (4 calls per transfer).</li>
-            <li><strong>Rate Limiting Impact:</strong> <span class="highlight">SEVERE.</span> 2,000 of these are heavy list queries. Clients will rapidly hit rate limits, and backend database latency increases.</li>
-        </ul>
+        <h2>Infrastructure Impact (Per 1,000 Transfers)</h2>
+        <strong>API Requests:</strong> 4,000 requests (2,000 are heavy list queries).<br>
+        <strong>Rate Limiting:</strong> High risk of throttling due to repetitive GET /v2/transfers polling. App UX suffers from latency.
     </div>
 
 </body>
